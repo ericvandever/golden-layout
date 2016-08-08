@@ -344,7 +344,8 @@ lm.utils.DragListener.timeout = null;
 
 lm.utils.copy( lm.utils.DragListener.prototype, {
 	destroy: function() {
-		this._eElement.unbind( 'mousedown touchstart', this._fDown );
+		this._eElement.off( 'mousedown touchstart', this._fDown );
+		this._eElement = null;
 	},
 
 	onMouseDown: function(oEvent)
@@ -421,6 +422,7 @@ lm.utils.copy( lm.utils.DragListener.prototype, {
 		return coordinates;
 	}
 });
+
 /**
  * The main class that will be exposed as GoldenLayout.
  *
@@ -447,6 +449,7 @@ lm.LayoutManager = function( config, container ) {
 	this._components = { 'lm-react-component': lm.utils.ReactComponentHandler };
 	this._itemAreas = [];
 	this._resizeFunction = lm.utils.fnBind( this._onResize, this );
+	this._unloadFunction = lm.utils.fnBind( this._onUnload, this );
 	this._maximisedItem = null;
 	this._maximisePlaceholder = $( '<div class="lm_maximise_place"></div>' );
 	this._creationTimeoutPassed = false;
@@ -468,8 +471,6 @@ lm.LayoutManager = function( config, container ) {
 	if( this.isSubWindow === true ) {
 		$( 'body' ).css( 'visibility', 'hidden' );
 	}
-
-	$( window ).on( 'unload beforeunload', lm.utils.fnBind( this._onUnload, this) );
 
 	this._typeToItem = {
 		'column': lm.utils.fnBind( lm.items.RowOrColumn, this, [ true ] ),
@@ -731,11 +732,14 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 		}
 		this._onUnload();
 		$( window ).off( 'resize', this._resizeFunction );
+		$( window ).off( 'unload beforeunload', this._unloadFunction );
 		this.root.callDownwards( '_$destroy', [], true );
 		this.root.contentItems = [];
+		this._itemAreas = [];
 		this.tabDropPlaceholder.remove();
 		this.dropTargetIndicator.destroy();
 		this.transitionIndicator.destroy();
+		this.eventHub.destroy();
 	},
 
 	/**
@@ -1143,6 +1147,7 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 		if( this._isFullPage ) {
 			$(window).resize( this._resizeFunction );
 		}
+		$(window).on( 'unload beforeunload', this._unloadFunction );
 	},
 
 	/**
@@ -1356,6 +1361,11 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 	}
 })();
 
+lm.config.itemDefaultConfig = {
+	isClosable: true,
+	reorderEnabled: true,
+	title: ''
+};
 lm.config.defaultConfig = {
 	openPopouts:[],
 	settings:{
@@ -1385,11 +1395,6 @@ lm.config.defaultConfig = {
 		popout: 'open in new window',
 		popin: 'pop in'
 	}
-};
-lm.config.itemDefaultConfig = {
-	isClosable: true,
-	reorderEnabled: true,
-	title: ''
 };
 lm.container.ItemContainer = function( config, parent, layoutManager ) {
 	lm.utils.EventEmitter.call( this );
@@ -1961,10 +1966,13 @@ lm.utils.copy( lm.controls.DragProxy.prototype, {
 		} else if ( this._originalParent ){
 			this._originalParent.addChild( this._contentItem );
 		}
-		
+
+		this._dragListener.off( 'drag', this._onDrag);
+		this._dragListener.off( 'dragStop', this._onDrop);
+
 		this.element.remove();
 	},
-	
+
 	/**
 	 * Removes the item from it's original position within the tree
 	 *
@@ -2216,8 +2224,11 @@ lm.utils.copy( lm.controls.Header.prototype, {
 		for( var i = 0; i < this.tabs.length; i++ ) {
 			this.tabs[ i ]._$destroy();
 		}
-	
+
+		this.tabsContainer = null;
+		this.controlsContainer = null;
 		this.element.remove();
+		this.element = null;
 	},
 
 	/**
@@ -2365,15 +2376,32 @@ lm.controls.Splitter = function( isVertical, size ) {
 
 	this.element = this._createElement();
 	this._dragListener = new lm.utils.DragListener( this.element );
+	// TODO is there a way to call off for the associated methods instead of tracking internally?
+	this._events = new Map();
 };
 
 lm.utils.copy( lm.controls.Splitter.prototype, {
 	on: function( event, callback, context ) {
+		this._events.set(event, callback);
 		this._dragListener.on( event, callback, context );
 	},
 
+	off: function( event, callback ) {
+		this._dragListener.off( event, callback );
+	},
+
 	_$destroy: function() {
+		var dragListener = this._dragListener;
+		if( dragListener ) {
+			this._events.forEach(function(callback, event)  {
+				dragListener.off(event, callback);
+			});
+			this._events.clear();
+			this._dragListener.destroy();
+			this._dragListener = null;
+		}
 		this.element.remove();
+		this.element = null;
 	},
 
 	_createElement: function() {
@@ -2487,9 +2515,30 @@ lm.utils.copy( lm.controls.Tab.prototype,{
 	 * @returns {void}
 	 */
 	_$destroy: function() {
-		this.element.off( 'click', this._onTabClickFn );
-		this.closeElement.off( 'click', this._onCloseClickFn );
-		this.element.remove();
+
+		if( this._dragListener ) {
+			this._dragListener.off('dragStart', this._onDragStart );
+			this._dragListener.destroy();
+			this._dragListener = null;
+		}
+		this.contentItem.tab = null;
+		if( this.contentItem.isComponent ) {
+			this.contentItem.container.tab = null;
+		}
+		if (this.closeElement) {
+			this.closeElement.off( 'click', this._onCloseClickFn );
+			this.closeElement.remove();
+			this.closeElement = null;
+		}
+		if (this.titleElement) {
+			this.titleElement.remove();
+			this.titleElement = null;
+		}
+		if (this.element) {
+			this.element.off( 'click', this._onTabClickFn );
+			this.element.remove();
+			this.element = null;
+		}
 	},
 
 	/**
@@ -3382,7 +3431,13 @@ lm.items.RowOrColumn = function( isColumn, layoutManager, config, parent ) {
 lm.utils.extend( lm.items.RowOrColumn, lm.items.AbstractContentItem );
 
 lm.utils.copy( lm.items.RowOrColumn.prototype, {
-	
+
+	_$destroy: function() {
+		this.childElementContainer = null;
+		this.element.remove();
+		lm.items.AbstractContentItem.prototype._$destroy.call( this );
+	},
+
 	/**
 	 * Add a new contentItem to the Row or Column
 	 *
@@ -3771,6 +3826,7 @@ lm.utils.copy( lm.items.RowOrColumn.prototype, {
 		lm.utils.animFrame( lm.utils.fnBind( this.callDownwards, this, [ 'setSize' ] ) );
 	}
 });
+
 lm.items.Stack = function( layoutManager, config, parent ) {
 	lm.items.AbstractContentItem.call( this, layoutManager, config, parent );
 
@@ -4432,7 +4488,8 @@ lm.utils.EventHub = function( layoutManager ) {
 	this._dontPropagateToParent = null;
 	this._childEventSource = null;
 	this.on( lm.utils.EventEmitter.ALL_EVENT, lm.utils.fnBind( this._onEventFromThis, this ) );
-	$(window).on( 'gl_child_event', lm.utils.fnBind( this._onEventFromChild, this ) );
+	this._boundOnEventFromChild = lm.utils.fnBind( this._onEventFromChild, this );
+	$(window).on( 'gl_child_event', this._boundOnEventFromChild );
 };
 
 /**
@@ -4532,6 +4589,18 @@ lm.utils.EventHub.prototype._propagateToChildren = function( args ) {
 			childGl.eventHub._$onEventFromParent( args );
 		}
 	}
+};
+
+
+/**
+ * Destroys the EventHub
+ *
+ * @public
+ * @returns {void}
+ */
+
+lm.utils.EventHub.prototype.destroy = function() {
+	$(window).off( 'gl_child_event', this._boundOnEventFromChild );
 };
 /**
  * A specialised GoldenLayout component that binds GoldenLayout container
