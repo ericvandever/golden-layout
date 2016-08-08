@@ -132,8 +132,10 @@ lm.utils.copy( lm.controls.Header.prototype, {
 
 		this.tabsContainer = null;
 		this.controlsContainer = null;
-		this.element.remove();
-		this.element = null;
+		if (this.element) {
+			this.element.remove();
+			this.element = null;
+		}
 	},
 
 	/**
