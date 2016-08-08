@@ -310,6 +310,7 @@ lm.utils.copy( lm.LayoutManager.prototype, {
 		$( window ).off( 'unload beforeunload', this._unloadFunction );
 		this.root.callDownwards( '_$destroy', [], true );
 		this.root.contentItems = [];
+		this._itemAreas = [];
 		this.tabDropPlaceholder.remove();
 		this.dropTargetIndicator.destroy();
 		this.transitionIndicator.destroy();

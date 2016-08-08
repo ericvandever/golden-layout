@@ -129,8 +129,11 @@ lm.utils.copy( lm.controls.Header.prototype, {
 		for( var i = 0; i < this.tabs.length; i++ ) {
 			this.tabs[ i ]._$destroy();
 		}
-	
+
+		this.tabsContainer = null;
+		this.controlsContainer = null;
 		this.element.remove();
+		this.element = null;
 	},
 
 	/**

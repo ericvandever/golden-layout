@@ -126,10 +126,13 @@ lm.utils.copy( lm.controls.DragProxy.prototype, {
 		} else if ( this._originalParent ){
 			this._originalParent.addChild( this._contentItem );
 		}
-		
+
+		this._dragListener.off( 'drag', this._onDrag);
+		this._dragListener.off( 'dragStop', this._onDrop);
+
 		this.element.remove();
 	},
-	
+
 	/**
 	 * Removes the item from it's original position within the tree
 	 *

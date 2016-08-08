@@ -18,7 +18,13 @@ lm.items.RowOrColumn = function( isColumn, layoutManager, config, parent ) {
 lm.utils.extend( lm.items.RowOrColumn, lm.items.AbstractContentItem );
 
 lm.utils.copy( lm.items.RowOrColumn.prototype, {
-	
+
+	_$destroy: function() {
+		this.childElementContainer = null;
+		this.element.remove();
+		lm.items.AbstractContentItem.prototype._$destroy.call( this );
+	},
+
 	/**
 	 * Add a new contentItem to the Row or Column
 	 *

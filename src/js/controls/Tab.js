@@ -100,13 +100,30 @@ lm.utils.copy( lm.controls.Tab.prototype,{
 	 * @returns {void}
 	 */
 	_$destroy: function() {
-		this.element.off( 'click', this._onTabClickFn );
-		this.closeElement.off( 'click', this._onCloseClickFn );
+
 		if( this._dragListener ) {
-			this._dragListener.off( 'dragStart', this._onDragStart );
+			this._dragListener.off('dragStart', this._onDragStart );
+			this._dragListener.destroy();
 			this._dragListener = null;
 		}
-		this.element.remove();
+		this.contentItem.tab = null;
+		if( this.contentItem.isComponent ) {
+			this.contentItem.container.tab = null;
+		}
+		if (this.closeElement) {
+			this.closeElement.off( 'click', this._onCloseClickFn );
+			this.closeElement.remove();
+			this.closeElement = null;
+		}
+		if (this.titleElement) {
+			this.titleElement.remove();
+			this.titleElement = null;
+		}
+		if (this.element) {
+			this.element.off( 'click', this._onTabClickFn );
+			this.element.remove();
+			this.element = null;
+		}
 	},
 
 	/**
