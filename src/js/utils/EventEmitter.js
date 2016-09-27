@@ -19,13 +19,17 @@ lm.utils.EventEmitter = function()
 	 * Listen for events
 	 *
 	 * @param   {String} sEvent    The name of the event to listen to
-	 * @param   {Function} fCallback The callback to execute when the event occurs
+	 * @param   {Function} fCallback The callback to execute when the event occurs 
 	 * @param   {[Object]} oContext The value of the this pointer within the callback function
 	 *
 	 * @returns {void}
 	 */
 	this.on = function( sEvent, fCallback, oContext )
 	{
+		if ( !lm.utils.isFunction(fCallback) ) {
+			throw new Error( 'Tried to listen to event ' + sEvent + ' with non-function callback ' + fCallback );
+		}
+		
 		if( !this._mSubscriptions[ sEvent ] )
 		{
 			this._mSubscriptions[ sEvent ] = [];
@@ -66,11 +70,11 @@ lm.utils.EventEmitter = function()
 	};
 
 	/**
-	 * Removes a listener for an event
+	 * Removes a listener for an event, or all listeners if no callback and context is provided.
 	 *
 	 * @param   {String} sEvent    The name of the event
-	 * @param   {Function} fCallback The previously registered callback method
-	 * @param   {Object} oContext  The previously registered context
+	 * @param   {Function} fCallback The previously registered callback method (optional)
+	 * @param   {Object} oContext  The previously registered context (optional)
 	 *
 	 * @returns {void}
 	 */
@@ -86,7 +90,7 @@ lm.utils.EventEmitter = function()
 		{
 			if
 			(
-				this._mSubscriptions[ sEvent ][ i ].fn === fCallback &&
+				( !fCallback || this._mSubscriptions[ sEvent ][ i ].fn === fCallback ) &&
 				( !oContext || oContext === this._mSubscriptions[ sEvent ][ i ].ctx )
 			)
 			{

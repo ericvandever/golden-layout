@@ -30,6 +30,7 @@ lm.controls.DragProxy = function( x, y, dragListener, layoutManager, contentItem
 
 	this.element = $( lm.controls.DragProxy._template );
 	this.element.css({ left: x, top: y });
+	this.element.find( '.lm_tab' ).attr( 'title', lm.utils.stripTags( this._contentItem.config.title ) );
 	this.element.find( '.lm_title' ).html( this._contentItem.config.title );
 	this.childElementContainer = this.element.find( '.lm_content' );
 	this.childElementContainer.append( contentItem.element );
@@ -48,6 +49,8 @@ lm.controls.DragProxy = function( x, y, dragListener, layoutManager, contentItem
 	this._maxY = this._layoutManager.container.height() + this._minY;
 	this._width = this.element.width();
 	this._height = this.element.height();
+
+	this._setDropPosition( x, y );
 };
 
 lm.controls.DragProxy._template = '<div class="lm_dragProxy">' +
@@ -80,20 +83,34 @@ lm.utils.copy( lm.controls.DragProxy.prototype, {
 		var x = event.pageX,
 			y = event.pageY,
 			isWithinContainer = x > this._minX && x < this._maxX && y > this._minY && y < this._maxY;
-	
+
 		if( !isWithinContainer && this._layoutManager.config.settings.constrainDragToContainer === true ) {
 			return;
 		}
-	
+
+		this._setDropPosition( x, y );
+	},
+
+	/**
+	 * Sets the target position, highlighting the appropriate area
+	 *
+	 * @param   {Number} x The x position in px
+	 * @param   {Number} y The y position in px
+	 *
+	 * @private
+	 *
+	 * @returns {void}
+	 */
+	_setDropPosition: function( x, y ) {
 		this.element.css({ left: x, top: y });
 		this._area = this._layoutManager._$getArea( x, y );
-	
+
 		if( this._area !== null ) {
 			this._lastValidArea = this._area;
 			this._area.contentItem._$highlightDropZone( x, y, this._area );
 		}
 	},
-	
+
 	/**
 	 * Callback when the drag has finished. Determines the drop area
 	 * and adds the child to it
@@ -125,16 +142,26 @@ lm.utils.copy( lm.controls.DragProxy.prototype, {
 		 */
 		} else if ( this._originalParent ){
 			this._originalParent.addChild( this._contentItem );
+
+		/**
+		 * The drag didn't ultimately end up with adding the content item to
+		 * any container. In order to ensure clean up happens, destroy the
+		 * content item.
+		 */
+		} else {
+			this._contentItem._$destroy();
 		}
 
 		this._dragListener.off( 'drag', this._onDrag);
 		this._dragListener.off( 'dragStop', this._onDrop);
 
 		this.element.remove();
+
+		this._layoutManager.emit( 'itemDropped', this._contentItem );
 	},
 
 	/**
-	 * Removes the item from it's original position within the tree
+	 * Removes the item from its original position within the tree
 	 *
 	 * @private
 	 *

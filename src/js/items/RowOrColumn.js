@@ -163,7 +163,7 @@ lm.utils.copy( lm.items.RowOrColumn.prototype, {
 	},
 	
 	/**
-	 * Invoked recoursively by the layout manager. AbstractContentItem.init appends
+	 * Invoked recursively by the layout manager. AbstractContentItem.init appends
 	 * the contentItem's DOM elements to the container, RowOrColumn init adds splitters
 	 * in between them
 	 *
@@ -219,7 +219,7 @@ lm.utils.copy( lm.items.RowOrColumn.prototype, {
 			itemSizes.push( itemSize );
 		}
 
-		additionalPixel = ( this._isColumn ? totalHeight : totalWidth ) - totalAssigned;
+		additionalPixel = Math.floor( ( this._isColumn ? totalHeight : totalWidth ) - totalAssigned );
 
 		for( i = 0; i < this.contentItems.length; i++ ) {
 			if( additionalPixel - i > 0 ) {
@@ -348,6 +348,22 @@ lm.utils.copy( lm.items.RowOrColumn.prototype, {
 			after: this.contentItems[ index + 1 ]
 		};
 	},
+
+	/**
+	 * Gets the minimum dimensions for the given item configuration array
+	 * @param item
+	 * @private
+	 */
+	_getMinimumDimensions: function (arr) {
+		var minWidth = 0, minHeight = 0;
+
+		for (var i = 0; i < arr.length; ++i) {
+			minWidth = Math.max(arr[i].minWidth || 0, minWidth);
+			minHeight = Math.max(arr[i].minHeight || 0, minHeight);
+		}
+
+		return { horizontal: minWidth, vertical: minHeight };
+	},
 	
 	/**
 	 * Invoked when a splitter's dragListener fires dragStart. Calculates the splitters
@@ -360,10 +376,16 @@ lm.utils.copy( lm.items.RowOrColumn.prototype, {
 	_onSplitterDragStart: function( splitter ) {
 		var items = this._getItemsForSplitter( splitter ),
 			minSize = this.layoutManager.config.dimensions[ this._isColumn ? 'minItemHeight' : 'minItemWidth' ];
-	
+
+		var beforeMinDim = this._getMinimumDimensions(items.before.config.content);
+		var beforeMinSize = this._isColumn ? beforeMinDim.vertical : beforeMinDim.horizontal;
+
+		var afterMinDim = this._getMinimumDimensions(items.after.config.content);
+		var afterMinSize = this._isColumn ? afterMinDim.vertical : afterMinDim.horizontal;
+
 		this._splitterPosition = 0;
-		this._splitterMinPosition = -1 * ( items.before.element[ this._dimension ]() - minSize );
-		this._splitterMaxPosition = items.after.element[ this._dimension ]() - minSize;
+		this._splitterMinPosition = -1 * ( items.before.element[ this._dimension ]() - (beforeMinSize || minSize) );
+		this._splitterMaxPosition = items.after.element[ this._dimension ]() - (afterMinSize || minSize);
 	},
 	
 	/**

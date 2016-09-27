@@ -72,6 +72,19 @@ describe( 'the EventEmitter works', function(){
 		expect(myListener.callback.calls.length).toEqual(1);
 	});
 
+	it( 'unbinds all events if no context is provided', function(){
+		var myObject = new EmitterImplementor();
+		var myListener = { callback: function(){}};
+		spyOn( myListener, 'callback' );
+		myObject.on( 'someEvent', myListener.callback );
+		expect(myListener.callback.calls.length).toEqual(0);
+		myObject.emit( 'someEvent' );
+		expect(myListener.callback.calls.length).toEqual(1);
+		myObject.unbind( 'someEvent' );
+		myObject.emit( 'someEvent' );
+		expect(myListener.callback.calls.length).toEqual(1);
+	});
+
 	it( 'unbinds events for a specific context only', function(){
 		var myObject = new EmitterImplementor();
 		var myListener = { callback: function(){}};
@@ -108,5 +121,21 @@ describe( 'the EventEmitter works', function(){
 		expect(function(){
 			myObject.unbind( 'someEvent', myListener.callback );
 		}).not.toThrow();
+	});
+	
+	it( 'throws an exception when attempting to bind a non-function', function() {
+		var myObject = new EmitterImplementor();
+		
+		expect(function(){
+			myObject.on( 'someEvent', 1 );
+		}).toThrow();
+
+		expect(function(){
+			myObject.on( 'someEvent', undefined );
+		}).toThrow();
+		
+		expect(function(){
+			myObject.on( 'someEvent', {} );
+		}).toThrow();
 	});
 });
