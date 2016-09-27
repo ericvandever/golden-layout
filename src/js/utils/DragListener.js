@@ -45,15 +45,18 @@ lm.utils.copy( lm.utils.DragListener.prototype, {
 	{
 		oEvent.preventDefault();
 
-		var coordinates = this._getCoordinates( oEvent );
-		
-		this._nOriginalX = coordinates.x;
-		this._nOriginalY = coordinates.y;
+		// Only continue drag event on LEFT mouse button click
+		if (oEvent.button === 0) {
+			var coordinates = this._getCoordinates( oEvent );
 
-		this._oDocument.on('mousemove touchmove', this._fMove);
-		this._oDocument.one('mouseup touchend', this._fUp);
+			this._nOriginalX = coordinates.x;
+			this._nOriginalY = coordinates.y;
 
-		this._timeout = setTimeout( lm.utils.fnBind( this._startDrag, this ), this._nDelay );
+			this._oDocument.on('mousemove touchmove', this._fMove);
+			this._oDocument.one('mouseup touchend', this._fUp);
+
+			this._timeout = setTimeout( lm.utils.fnBind( this._startDrag, this ), this._nDelay );
+		}
 	},
 
 	onMouseMove: function(oEvent)
