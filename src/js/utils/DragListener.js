@@ -37,7 +37,6 @@ lm.utils.DragListener.timeout = null;
 lm.utils.copy(lm.utils.DragListener.prototype, {
 	destroy: function () {
 		this._eElement.unbind('mousedown touchstart', this._fDown);
-		this._eElement = null;
 	},
 
 	onMouseDown: function (oEvent) {
